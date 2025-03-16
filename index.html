@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Information System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Food Information System</h1>
+        <nav>
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Cari makanan...">
+                <button onclick="searchFood()">Cari</button>
+            </div>
+            <div class="category-filter">
+                <select id="categoryFilter" onchange="filterByCategory()">
+                    <option value="0">Semua Kategori</option>
+                    <!-- Will be populated dynamically -->
+                </select>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="foodList" class="food-list">
+            <!-- Foods will be listed here -->
+            <div class="loading">Memuat data...</div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Food Information System</p>
+    </footer>
+
+    <script>
+        // Base URL for API
+        const API_BASE_URL = 'http://localhost:5000/api';
+        
+        // DOM Elements
+        const foodListElement = document.getElementById('foodList');
+        const categoryFilterElement = document.getElementById('categoryFilter');
+        const searchInputElement = document.getElementById('searchInput');
+
+        // Initialize the app
+        window.onload = async function() {
+            await loadCategories();
+            await loadFoods();
+        };
+
+        // Load all food categories
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/categories`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    data.data.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.category_id;
+                        option.textContent = category.category_name;
+                        categoryFilterElement.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        // Load all foods
+        async function loadFoods() {
+            foodListElement.innerHTML = '<div class="loading">Memuat data...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/foods/`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayFoods(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading foods:', error);
+                foodListElement.innerHTML = '<div class="error">Gagal memuat data</div>';
+            }
+        }
+
+        // Filter foods by category
+        async function filterByCategory() {
+            const categoryId = categoryFilterElement.value;
+            foodListElement.innerHTML = '<div class="loading">Memuat data...</div>';
+            
+            try {
+                let url = `${API_BASE_URL}/foods/`;
+                
+                if (categoryId !== '0') {
+                    url = `${API_BASE_URL}/foods/category/${categoryId}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayFoods(data.data);
+                }
+            } catch (error) {
+                console.error('Error filtering by category:', error);
+                foodListElement.innerHTML = '<div class="error">Gagal memuat data</div>';
+            }
+        }
+
+        // Search foods
+        async function searchFood() {
+            const searchTerm = searchInputElement.value.trim();
+            foodListElement.innerHTML = '<div class="loading">Mencari...</div>';
+            
+            if (!searchTerm) {
+                loadFoods();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/foods/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ search: searchTerm })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayFoods(data.data);
+                }
+            } catch (error) {
+                console.error('Error searching foods:', error);
+                foodListElement.innerHTML = '<div class="error">Gagal mencari data</div>';
+            }
+        }
+
+        // Display foods in the food list section
+        function displayFoods(foods) {
+            if (foods.length === 0) {
+                foodListElement.innerHTML = '<div class="no-result">Tidak ada makanan ditemukan</div>';
+                return;
+            }
+            
+            foodListElement.innerHTML = '';
+            
+            foods.forEach(food => {
+                const foodCard = document.createElement('div');
+                foodCard.className = 'food-card';
+                foodCard.innerHTML = `
+                    <h3>${food.food_name}</h3>
+                    <p>${food.description || 'Tidak ada deskripsi'}</p>
+                    <button onclick="navigateToFoodDetail(${food.food_id})">Lihat Detail</button>
+                `;
+                
+                foodListElement.appendChild(foodCard);
+            });
+        }
+
+        // Navigate to food detail page
+        function navigateToFoodDetail(foodId) {
+            window.location.href = `food-detail.html?id=${foodId}`;
+        }
+    </script>
+</body>
+</html>

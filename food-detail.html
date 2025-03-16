@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detail Makanan | Food Information System</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Detail Makanan</h1>
+      <nav>
+        <a href="index.html" class="back-button">← Kembali ke Daftar Makanan</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="food-detail">
+        <div id="foodDetail">
+          <div class="loading">Memuat data...</div>
+        </div>
+      </section>
+
+      <section class="food-ingredients">
+        <h2>Bahan-Bahan</h2>
+        <div id="foodIngredients">
+          <div class="loading">Memuat data...</div>
+        </div>
+      </section>
+
+      <section class="food-steps">
+        <h2>Langkah-Langkah Pembuatan</h2>
+        <div id="foodSteps">
+          <div class="loading">Memuat data...</div>
+        </div>
+      </section>
+
+      <section class="food-nutrition">
+        <h2>Total Nutrisi Dari Bahan</h2>
+        <div id="foodNutrition">
+          <div class="loading">Memuat data...</div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Food Information System</p>
+    </footer>
+
+    <script>
+      // Base URL for API
+      const API_BASE_URL = "http://localhost:5000/api";
+
+      // Get food ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const foodId = urlParams.get("id");
+
+      // DOM Elements
+      const foodDetailElement = document.getElementById("foodDetail");
+      const foodIngredientsElement = document.getElementById("foodIngredients");
+      const foodStepsElement = document.getElementById("foodSteps");
+      const foodNutritionElement = document.getElementById("foodNutrition");
+
+      // Variable to store recipe ID
+      let recipeId;
+
+      // Initialize the page
+      window.onload = async function () {
+        if (!foodId) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        await loadFoodDetails();
+      };
+
+      // Load food details
+      async function loadFoodDetails() {
+        try {
+          const response = await fetch(`${API_BASE_URL}/foods/info/${foodId}`);
+          const data = await response.json();
+
+          if (data.status === "success") {
+            displayFoodDetails(data.data);
+
+            // For demo purposes, we're assuming recipeId is the same as foodId
+            // In a real application, you'd need to get this from the API response
+            recipeId = data.data.recipes[0].recipe_id;
+
+            // Load additional information
+            await Promise.all([
+              loadIngredients(recipeId),
+              loadSteps(recipeId),
+              loadNutrition(recipeId),
+            ]);
+          }
+        } catch (error) {
+          console.error("Error loading food details:", error);
+          foodDetailElement.innerHTML =
+            '<div class="error">Gagal memuat detail makanan</div>';
+        }
+      }
+
+      // Load ingredients
+      async function loadIngredients(recipeId) {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/foods/recipe/${recipeId}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            displayIngredients(data.data);
+          }
+        } catch (error) {
+          console.error("Error loading ingredients:", error);
+          foodIngredientsElement.innerHTML =
+            '<div class="error">Gagal memuat data bahan</div>';
+        }
+      }
+
+      // Load steps
+      async function loadSteps(recipeId) {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/foods/recipe/steps/${recipeId}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            displaySteps(data.data);
+          }
+        } catch (error) {
+          console.error("Error loading steps:", error);
+          foodStepsElement.innerHTML =
+            '<div class="error">Gagal memuat langkah-langkah</div>';
+        }
+      }
+
+      // Load nutrition
+      async function loadNutrition(recipeId) {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/foods/nutrients/total/${recipeId}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            displayNutrition(data.data);
+          }
+        } catch (error) {
+          console.error("Error loading nutrition:", error);
+          foodNutritionElement.innerHTML =
+            '<div class="error">Gagal memuat data nutrisi</div>';
+        }
+      }
+
+      // Display food details
+      function displayFoodDetails(food) {
+        document.title = `${food.food_name} | Food Information System`;
+
+        foodDetailElement.innerHTML = `
+                <div class="food-info">
+                    <h2>${food.food_name}</h2>
+                    <p class="description">${
+                      food.description || "Tidak ada deskripsi"
+                    }</p>
+                    <p class="category">Kategori: ${
+                      food.categories.category_name
+                    }</p>
+                    ${
+                      food.brand
+                        ? `<p class="brand">Brand: ${food.brand}</p>`
+                        : ""
+                    }
+                </div>
+            `;
+      }
+
+      // Display ingredients
+      function displayIngredients(ingredients) {
+        if (ingredients.length === 0) {
+          foodIngredientsElement.innerHTML = "<p>Tidak ada data bahan</p>";
+          return;
+        }
+
+        const ingredientsList = document.createElement("ul");
+        ingredientsList.className = "ingredients-list";
+
+        ingredients.forEach((ingredient) => {
+          const listItem = document.createElement("li");
+          listItem.innerHTML = `
+                    <span class="ingredient-name">${
+                      ingredient.ingredients.ingredient_name
+                    }</span>: 
+                    <span class="ingredient-quantity">${ingredient.quantity} ${
+            ingredient.unit
+          }</span>
+                    ${
+                      ingredient.preparation_note
+                        ? `<span class="preparation-note">(${ingredient.preparation_note})</span>`
+                        : ""
+                    }
+                    <button class="ingredient-detail-btn" onclick="navigateToIngredientDetail(${
+                      ingredient.ingredient_id
+                    }, ${recipeId})">
+                        Lihat Detail Nutrisi
+                    </button>
+                `;
+          ingredientsList.appendChild(listItem);
+        });
+
+        foodIngredientsElement.innerHTML = "";
+        foodIngredientsElement.appendChild(ingredientsList);
+      }
+
+      // Display steps
+      function displaySteps(steps) {
+        if (steps.length === 0) {
+          foodStepsElement.innerHTML =
+            "<p>Tidak ada langkah-langkah pembuatan</p>";
+          return;
+        }
+
+        const stepsList = document.createElement("ol");
+        stepsList.className = "steps-list";
+
+        steps.forEach((step) => {
+          const listItem = document.createElement("li");
+          listItem.innerHTML = `
+                    <div class="step-instruction">${step.instruction}</div>
+                    <div class="step-duration">Durasi: ${
+                      step.duration
+                    } menit</div>
+                    ${
+                      step.notes
+                        ? `<div class="step-notes">Catatan: ${step.notes}</div>`
+                        : ""
+                    }
+                `;
+          stepsList.appendChild(listItem);
+        });
+
+        foodStepsElement.innerHTML = "";
+        foodStepsElement.appendChild(stepsList);
+      }
+
+      // Display nutrition
+      function displayNutrition(nutritionData) {
+        if (nutritionData.length === 0) {
+          foodNutritionElement.innerHTML = "<p>Tidak ada data nutrisi</p>";
+          return;
+        }
+
+        const nutritionTable = document.createElement("table");
+        nutritionTable.className = "nutrition-table";
+
+        nutritionTable.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Nutrisi</th>
+                        <th>Jumlah</th>
+                        <th>Satuan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${nutritionData
+                      .map(
+                        (nutrient) => `
+                        <tr>
+                            <td>${nutrient.nutrient_name}</td>
+                            <td>${nutrient.total_amount}</td>
+                            <td>${nutrient.unit}</td>
+                        </tr>
+                    `
+                      )
+                      .join("")}
+                </tbody>
+            `;
+
+        foodNutritionElement.innerHTML = "";
+        foodNutritionElement.appendChild(nutritionTable);
+      }
+
+      // Navigate to ingredient detail page
+      function navigateToIngredientDetail(ingredientId, recipeId) {
+        window.location.href = `ingredient-detail.html?id=${ingredientId}&recipe=${recipeId}`;
+      }
+    </script>
+  </body>
+</html>

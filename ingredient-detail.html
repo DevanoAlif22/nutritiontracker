@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detail Bahan | Food Information System</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Detail Bahan</h1>
+      <nav>
+        <a href="javascript:history.back()" class="back-button"
+          >← Kembali ke Detail Makanan</a
+        >
+      </nav>
+    </header>
+
+    <main>
+      <section id="ingredientDetail" class="ingredient-detail">
+        <div class="loading">Memuat data...</div>
+      </section>
+
+      <section class="ingredient-nutrition">
+        <h2>Informasi Nutrisi</h2>
+        <div id="ingredientNutrition">
+          <div class="loading">Memuat data...</div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Food Information System</p>
+    </footer>
+
+    <script>
+      // Base URL for API
+      const API_BASE_URL = "http://localhost:5000/api";
+
+      // Get ingredient ID and recipe ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const ingredientId = parseInt(urlParams.get("id"), 10);
+      const recipeId = parseInt(urlParams.get("recipe"), 10);
+
+      // DOM Elements
+      const ingredientDetailElement =
+        document.getElementById("ingredientDetail");
+      const ingredientNutritionElement = document.getElementById(
+        "ingredientNutrition"
+      );
+
+      // Initialize the page
+      window.onload = async function () {
+        if (!ingredientId || !recipeId) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        await loadIngredientDetails();
+        await loadIngredientNutrition();
+      };
+
+      // Load ingredient details - This would normally come from an API
+      // For this demo, we'll create a placeholder since the API doesn't provide this endpoint
+      async function loadIngredientDetails() {
+        try {
+          // In a real application, you would fetch this from an API endpoint
+          // For now, we'll create a placeholder
+
+          // First, try to get the ingredient name from the recipe ingredients endpoint
+          const response = await fetch(
+            `${API_BASE_URL}/foods/recipe/${recipeId}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            const ingredient = data.data.find(
+              (item) => item.ingredient_id == ingredientId
+            );
+
+            if (ingredient) {
+              displayIngredientDetails(ingredient);
+            } else {
+              ingredientDetailElement.innerHTML =
+                '<div class="error">Tidak dapat menemukan informasi bahan</div>';
+            }
+          }
+        } catch (error) {
+          console.error("Error loading ingredient details:", error);
+          ingredientDetailElement.innerHTML =
+            '<div class="error">Gagal memuat detail bahan</div>';
+        }
+      }
+
+      // Load ingredient nutrition
+      async function loadIngredientNutrition() {
+        try {
+          console.log([ingredientId, recipeId]);
+          const response = await fetch(
+            `${API_BASE_URL}/ingridients/nutrient/total/${ingredientId}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ recipeid: recipeId }),
+            }
+          );
+
+          const data = await response.json();
+          console.log(data.data);
+          if (data.status === "success") {
+            displayIngredientNutrition(data.data);
+          }
+        } catch (error) {
+          console.error("Error loading ingredient nutrition:", error);
+          ingredientNutritionElement.innerHTML =
+            '<div class="error">Gagal memuat data nutrisi bahan</div>';
+        }
+      }
+
+      // Display ingredient details
+      function displayIngredientDetails(ingredient) {
+        document.title = `${ingredient.ingredients.ingredient_name} | Food Information System`;
+
+        ingredientDetailElement.innerHTML = `
+                <div class="ingredient-info">
+                    <h2>${ingredient.ingredients.ingredient_name}</h2>
+                    <p>Jumlah: ${ingredient.quantity} ${ingredient.unit}</p>
+                    ${
+                      ingredient.preparation_note
+                        ? `<p>Catatan: ${ingredient.preparation_note}</p>`
+                        : ""
+                    }
+                </div>
+            `;
+      }
+
+      // Display ingredient nutrition
+      function displayIngredientNutrition(nutritionData) {
+        if (nutritionData.length === 0) {
+          ingredientNutritionElement.innerHTML =
+            "<p>Tidak ada data nutrisi</p>";
+          return;
+        }
+
+        const nutritionTable = document.createElement("table");
+        nutritionTable.className = "nutrition-table";
+
+        nutritionTable.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Nutrisi</th>
+                        <th>Jumlah</th>
+                        <th>Satuan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${nutritionData
+                      .map(
+                        (nutrient) => `
+                        <tr>
+                            <td>${nutrient.nutrient_name}</td>
+                            <td>${nutrient.total_amount}</td>
+                            <td>${nutrient.unit}</td>
+                        </tr>
+                    `
+                      )
+                      .join("")}
+                </tbody>
+            `;
+
+        ingredientNutritionElement.innerHTML = "";
+        ingredientNutritionElement.appendChild(nutritionTable);
+      }
+    </script>
+  </body>
+</html>
